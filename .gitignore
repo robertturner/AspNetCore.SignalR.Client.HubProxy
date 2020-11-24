@@ -3,3 +3,15 @@
 ################################################################################
 
 /.vs
+/AspNetCore.SignalR.Client.HubProxy/bin/Debug/net5.0
+/AspNetCore.SignalR.Client.HubProxy/obj
+/AspNetCore.SignalR.Client.HubProxy.DemoClient/bin/Debug/net5.0
+/AspNetCore.SignalR.Client.HubProxy.DemoClient/obj
+/AspNetCore.SignalR.Client.HubProxy.DemoCommon/bin/Debug/net5.0
+/AspNetCore.SignalR.Client.HubProxy.DemoCommon/obj
+/AspNetCore.SignalR.Client.HubProxy.DemoServer/bin/Debug/net5.0
+/AspNetCore.SignalR.Client.HubProxy.DemoServer/obj
+/AspNetCore.SignalR.Client.HubProxy/bin
+/AspNetCore.SignalR.Client.HubProxy.DemoClient/bin/Release/net5.0
+/AspNetCore.SignalR.Client.HubProxy.DemoCommon/bin/Release/net5.0
+/AspNetCore.SignalR.Client.HubProxy.DemoServer/bin/Release/net5.0
