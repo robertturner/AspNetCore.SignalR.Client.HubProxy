@@ -5,11 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="StaticProxy.Fody" Version="1.0.150-GenericMethods">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="StaticProxy.Interceptor" Version="1.0.127-GenericMethods" />
+    <PackageReference Include="StaticProxyGenerator" Version="1.1.1" />
+    <PackageReference Include="StaticProxyInterfaces" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

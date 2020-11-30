@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using BaseLibs.Tasks;
 using BaseLibs.Types;
 using System.Collections.Concurrent;
+using StaticProxyInterfaces;
 
 namespace AspNetCore.SignalR.Client.HubProxy
 {
@@ -31,11 +32,7 @@ namespace AspNetCore.SignalR.Client.HubProxy
                 throw new ArgumentException($"{nameof(clientObject)} must be of type (or derived of) {nameof(clientObject)}");
             ClientObject = clientObject;
 
-            Proxy = proxyCtors.GetOrAdd(hubType, _ =>
-            {
-                var proxyType = StaticProxy.Interceptor.InterfaceProxy.InterfaceProxyHelpers.GetImplementationTypeOfInterface(hubType);
-                return proxyType.GetConstructors()[0].DelegateForConstructor();
-            })(new StaticInterceptor(this));
+            Proxy = ProxyGeneratorHelpers.InstantiateProxy(hubType, InterceptorHandler);
 
             if (ClientType != null)
             {
@@ -66,65 +63,56 @@ namespace AspNetCore.SignalR.Client.HubProxy
         public object? ClientObject { get; }
         public object Proxy { get; }
 
-        sealed class StaticInterceptor : IDynamicInterceptorManager
+        object? InterceptorHandler(object instance, MethodInfo method, object[] arguments, Type[] genericArguments)
         {
-            public HubProxy Parent { get; }
-            public StaticInterceptor(HubProxy parent) => Parent = parent;
-
-            public void Initialize(object target, bool requireInterceptor) { }
-
-            public object? Intercept(MethodBase decoratedMethod, MethodBase implementationMethod, Type[] genericArguments, object[] arguments)
+            if (method.Name == nameof(IDisposable.Dispose))
+                Dispose();
+            else
             {
-                var method = (MethodInfo)decoratedMethod;
-                if (decoratedMethod.Name == nameof(IDisposable.Dispose))
-                    Parent.Dispose();
-                else
+                var retType = method.ReturnType;
+                Type retUnderlyingType = retType;
+                var retIsTask = typeof(Task).IsAssignableFrom(retType);
+                var retIsGenericTask = retIsTask && retType.IsGenericType && retType.GetGenericTypeDefinition() == typeof(Task<>);
+                if (retIsGenericTask)
+                    retUnderlyingType = retType.GetGenericArguments()[0];
+                try
                 {
-                    var retType = method.ReturnType;
-                    Type retUnderlyingType = retType;
-                    var retIsTask = typeof(Task).IsAssignableFrom(retType);
-                    var retIsGenericTask = retIsTask && retType.IsGenericType && retType.GetGenericTypeDefinition() == typeof(Task<>);
-                    if (retIsGenericTask)
-                        retUnderlyingType = retType.GetGenericArguments()[0];
-                    try
+                    if (retType == typeof(void) || (retIsTask && !retIsGenericTask)) // no results
                     {
-                        if (retType == typeof(void) || (retIsTask && !retIsGenericTask)) // no results
+                        var task = Connection.InvokeCoreAsync(method.Name, arguments);
+                        if (retType == typeof(void))
                         {
-                            var task = Parent.Connection.InvokeCoreAsync(method.Name, arguments);
-                            if (retType == typeof(void))
-                            {
-                                task.Wait();
-                                return null;
-                            }
-                            else
-                                return task;
+                            task.Wait();
+                            return null;
                         }
-                        else // have results
-                        {
-                            var task = Parent.Connection.InvokeCoreAsync(method.Name, retUnderlyingType, arguments);
-                            if (!retIsGenericTask)
-                                return task.Result;
-                            else // Task<T>
-                                return task.CastResultAs(retUnderlyingType);
-                        }
+                        else
+                            return task;
                     }
-                    catch (Exception ex)
+                    else // have results
                     {
-                        if (retType != typeof(void))
-                        {
-                            if (ex is AggregateException agEx && agEx.InnerExceptions.Count == 1)
-                                ex = agEx.InnerException!;
-                            if (retIsTask && !retIsGenericTask)
-                                return Task.FromException(ex);
-                            else if (retIsGenericTask)
-                                return ex.AsGenericTaskException(retUnderlyingType);
-                            else
-                                throw;
-                        }
+                        var task = Connection.InvokeCoreAsync(method.Name, retUnderlyingType, arguments);
+                        if (!retIsGenericTask)
+                            return task.Result;
+                        else // Task<T>
+                            return task.CastResultAs(retUnderlyingType);
                     }
                 }
-                return null;
+                catch (Exception ex)
+                {
+                    if (retType != typeof(void))
+                    {
+                        if (ex is AggregateException agEx && agEx.InnerExceptions.Count == 1)
+                            ex = agEx.InnerException!;
+                        if (retIsTask && !retIsGenericTask)
+                            return Task.FromException(ex);
+                        else if (retIsGenericTask)
+                            return ex.AsGenericTaskException(retUnderlyingType);
+                        else
+                            throw;
+                    }
+                }
             }
+            return null;
         }
 
         public void Dispose()
