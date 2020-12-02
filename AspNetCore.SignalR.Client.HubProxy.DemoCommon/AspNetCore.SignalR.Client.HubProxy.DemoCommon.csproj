@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="StaticProxyGenerator" Version="1.1.1" />
-    <PackageReference Include="StaticProxyInterfaces" Version="1.0.0" />
+    <PackageReference Include="StaticProxyGenerator" Version="1.2.0" />
+    <PackageReference Include="StaticProxyInterfaces" Version="1.2.0" />
   </ItemGroup>
 
 </Project>
